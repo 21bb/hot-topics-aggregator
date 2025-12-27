@@ -45,6 +45,30 @@ def update_hot_topics_cache():
 # daemon=True 确保主程序退出时线程也退出
 update_thread = threading.Thread(target=update_hot_topics_cache, daemon=True)
 
+# 初始化数据的函数（在后台线程中执行，不阻塞启动）
+def init_data_in_background():
+    """在后台线程中初始化数据，避免阻塞应用启动"""
+    global cached_hot_topics, last_update_time
+    try:
+        print("后台初始化：开始抓取热榜数据...")
+        topics = get_all_hot_topics()
+        if topics:
+            cached_hot_topics = topics
+            last_update_time = time.time()
+            print(f"后台初始化完成，共 {len(cached_hot_topics)} 条数据。")
+        else:
+            print("后台初始化：未获取到数据，将使用模拟数据。")
+    except Exception as e:
+        print(f"后台初始化出错: {e}，将使用模拟数据。")
+
+# 应用启动时自动初始化（适用于 gunicorn 启动）
+# Flask 2.0+ 兼容方式：在模块加载时启动
+if not update_thread.is_alive():
+    update_thread.start()
+    # 初始化数据
+    init_thread = threading.Thread(target=init_data_in_background, daemon=True)
+    init_thread.start()
+
 # 注册一个函数，在程序退出时设置停止事件，确保线程优雅退出
 @atexit.register
 def stop_update_thread():
@@ -83,15 +107,29 @@ def hot_topics_api():
         "last_update": last_update_str
     })
 
+# 初始化数据的函数（在后台线程中执行，不阻塞启动）
+def init_data_in_background():
+    """在后台线程中初始化数据，避免阻塞应用启动"""
+    global cached_hot_topics, last_update_time
+    try:
+        print("后台初始化：开始抓取热榜数据...")
+        topics = get_all_hot_topics()
+        if topics:
+            cached_hot_topics = topics
+            last_update_time = time.time()
+            print(f"后台初始化完成，共 {len(cached_hot_topics)} 条数据。")
+        else:
+            print("后台初始化：未获取到数据，将使用模拟数据。")
+    except Exception as e:
+        print(f"后台初始化出错: {e}，将使用模拟数据。")
+
 if __name__ == '__main__':
-    # 初始抓取一次数据，避免启动时缓存为空
-    print("首次抓取热榜数据...")
-    cached_hot_topics = get_all_hot_topics()
-    last_update_time = time.time()
-    print(f"首次抓取完成，共 {len(cached_hot_topics)} 条数据。")
-    
-    # 启动后台更新线程
+    # 启动后台更新线程（会自动初始化数据）
     update_thread.start()
+    
+    # 在另一个线程中初始化数据，不阻塞主线程
+    init_thread = threading.Thread(target=init_data_in_background, daemon=True)
+    init_thread.start()
 
     # 运行 Flask 应用
     # 从环境变量获取配置，如果没有则使用默认值
@@ -103,4 +141,5 @@ if __name__ == '__main__':
     if os.getenv('FLASK_ENV') == 'production':
         debug_mode = False
     
+    print(f"Flask 应用启动在 {host}:{port}")
     app.run(debug=debug_mode, host=host, port=port)
