@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聚合热榜 - 实时热点追踪</title>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .last-update {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        /* 热榜列表样式 */
+        .hot-list-section {
+            margin-bottom: 40px;
+        }
+        .hot-list-section h2 {
+            color: #34495e;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .hot-list {
+            list-style: none;
+            padding: 0;
+        }
+        .hot-list li {
+            background-color: #fdfdfd;
+            border: 1px solid #eee;
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .hot-list li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+        .hot-list li .rank {
+            font-weight: bold;
+            color: #2980b9;
+            margin-right: 15px;
+            min-width: 25px;
+            text-align: center;
+        }
+        .hot-list li a {
+            flex-grow: 1;
+            text-decoration: none;
+            color: #3498db;
+            font-size: 1.1em;
+            word-break: break-word; /* 防止长标题溢出 */
+        }
+        .hot-list li a:hover {
+            text-decoration: underline;
+        }
+        /* 状态信息 */
+        .loading-message, .error-message {
+            text-align: center;
+            font-size: 1.2em;
+            color: #555;
+        }
+        .error-message {
+            color: #e74c3c;
+        }
+        /* 刷新按钮样式 */
+        .refresh-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 10px auto;
+            transition: background-color 0.3s ease;
+        }
+        .refresh-btn:hover {
+            background-color: #2980b9;
+        }
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+        .refresh-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .button-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>聚合热榜</h1>
+        <p class="last-update" id="last-update">数据加载中...</p>
+        <div class="button-container">
+            <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">🔄 刷新数据</button>
+        </div>
+        <div id="hot-topics-container">
+            <p class="loading-message">正在加载热榜数据...</p>
+        </div>
+    </div>
+
+    <script>
+        // 刷新数据的函数
+        function refreshData() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            const container = document.getElementById('hot-topics-container');
+            const lastUpdateElem = document.getElementById('last-update');
+            
+            // 禁用按钮，显示加载状态
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '🔄 刷新中...';
+            container.innerHTML = '<p class="loading-message">正在刷新数据...</p>';
+            lastUpdateElem.textContent = '正在刷新...';
+            
+            // 获取数据
+            fetch('/api/hot_topics')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络请求失败，状态码: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    renderData(data);
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '🔄 刷新数据';
+                })
+                .catch(error => {
+                    console.error('获取热榜数据失败:', error);
+                    container.innerHTML = `<p class="error-message">刷新失败，请稍后再试。</p>`;
+                    lastUpdateElem.textContent = '刷新失败';
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '🔄 刷新数据';
+                });
+        }
+        
+        // 渲染数据的函数
+        function renderData(data) {
+            const container = document.getElementById('hot-topics-container');
+            const lastUpdateElem = document.getElementById('last-update');
+            
+            container.innerHTML = '';
+            
+            // 更新最后更新时间
+            if (data.last_update) {
+                lastUpdateElem.textContent = `最后更新时间: ${data.last_update}`;
+            } else {
+                lastUpdateElem.textContent = '数据加载中...';
+            }
+            
+            // 检查数据是否存在且不为空
+            if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+                container.innerHTML = `<p class="loading-message">暂无热榜数据，请稍后再试。</p>`;
+                return;
+            }
+            
+            // 将获取到的热榜数据按来源分组
+            const groupedTopics = data.data.reduce((acc, topic) => {
+                if (!acc[topic.source]) {
+                    acc[topic.source] = [];
+                }
+                acc[topic.source].push(topic);
+                return acc;
+            }, {});
+            
+            // 检查是否有分组后的数据
+            if (Object.keys(groupedTopics).length === 0) {
+                container.innerHTML = `<p class="loading-message">暂无热榜数据，请稍后再试。</p>`;
+                return;
+            }
+            
+            // 遍历每个数据来源，创建对应的热榜列表
+            for (const source in groupedTopics) {
+                const section = document.createElement('div');
+                section.classList.add('hot-list-section');
+                section.innerHTML = `<h2>${source}</h2>`;
+                
+                const ul = document.createElement('ul');
+                ul.classList.add('hot-list');
+                
+                // 对每个来源的热榜条目进行排序
+                const sortedSourceTopics = groupedTopics[source].sort((a, b) => {
+                    if (a.rank && b.rank) {
+                        return a.rank - b.rank;
+                    }
+                    return 0;
+                });
+                
+                // 遍历排序后的热榜条目，创建列表项
+                sortedSourceTopics.forEach(topic => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="rank">${topic.rank || ''}</span>
+                        <a href="${topic.url}" target="_blank" rel="noopener noreferrer">${topic.title}</a>
+                    `;
+                    ul.appendChild(li);
+                });
+                section.appendChild(ul);
+                container.appendChild(section);
+            }
+        }
+        
+        // 当页面内容加载完毕后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 使用 fetch API 向后端发送请求获取数据
+            fetch('/api/hot_topics')
+                .then(response => {
+                    // 检查HTTP响应是否成功 (状态码 200-299)
+                    if (!response.ok) {
+                        throw new Error('网络请求失败，状态码: ' + response.status);
+                    }
+                    // 将响应体解析为 JSON 格式
+                    return response.json();
+                })
+                .then(data => {
+                    renderData(data);
+                })
+                .catch(error => {
+                    // 捕获并处理请求过程中发生的错误
+                    console.error('获取热榜数据失败:', error);
+                    const container = document.getElementById('hot-topics-container');
+                    container.innerHTML = `<p class="error-message">加载热榜数据失败，请稍后再试。</p>`;
+                    document.getElementById('last-update').textContent = '数据加载失败';
+                });
+        });
+    </script>
+</body>
+</html>

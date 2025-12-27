@@ -1,0 +1,39 @@
+# Python 编译文件
+*.pyc
+__pycache__/
+
+# 虚拟环境目录
+venv/
+.venv/
+env/
+.env/
+
+# Python 包安装目录
+*.egg-info/
+.Python
+build/
+dist/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# IDE/编辑器文件 (根据你使用的IDE添加)
+.vscode/        # VS Code
+.idea/          # PyCharm/IntelliJ
+*.sublime-project # Sublime Text
+*.sublime-workspace
+
+# Flask 特定文件
+instance/       # Flask 的实例文件夹，通常包含本地配置或 SQLite 数据库
+.flaskenv       # Flask 环境变量文件
+
+# 依赖管理文件 (如果你使用 pipenv, poetry 等)
+Pipfile.lock
+poetry.lock
+
+# 日志文件
+*.log
+
+# 数据库文件 (如果你使用本地 SQLite)
+*.db
